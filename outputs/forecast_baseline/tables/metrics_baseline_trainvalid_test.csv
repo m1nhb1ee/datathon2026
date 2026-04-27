@@ -1,0 +1,3 @@
+split,target,model,MAE,RMSE,R2
+test,Revenue,seasonal_growth_baseline,633027.5838642907,874016.6203334763,0.7220755338759116
+test,COGS,seasonal_growth_baseline,542903.4768860064,745903.5388904945,0.7271647087572461

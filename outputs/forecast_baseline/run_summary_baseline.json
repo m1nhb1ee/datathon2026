@@ -1,0 +1,60 @@
+{
+  "train_fit_rows": 2737,
+  "train_fit_min_date": "2012-07-04",
+  "train_fit_max_date": "2019-12-31",
+  "test_rows": 1096,
+  "test_min_date": "2020-01-01",
+  "test_max_date": "2022-12-31",
+  "future_rows": 548,
+  "future_min_date": "2023-01-01",
+  "future_max_date": "2024-07-01",
+  "test_baseline_params": {
+    "base_year": 2019,
+    "complete_years": [
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019
+    ],
+    "growth_rev": 0.9391168169710911,
+    "growth_cogs": 0.9390476027044072
+  },
+  "future_baseline_params": {
+    "base_year": 2022,
+    "complete_years": [
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022
+    ],
+    "growth_rev": 0.962036934053604,
+    "growth_cogs": 0.9605429147857303
+  },
+  "metrics": [
+    {
+      "split": "test",
+      "target": "Revenue",
+      "model": "seasonal_growth_baseline",
+      "MAE": 633027.5838642907,
+      "RMSE": 874016.6203334763,
+      "R2": 0.7220755338759116
+    },
+    {
+      "split": "test",
+      "target": "COGS",
+      "model": "seasonal_growth_baseline",
+      "MAE": 542903.4768860064,
+      "RMSE": 745903.5388904945,
+      "R2": 0.7271647087572461
+    }
+  ]
+}
