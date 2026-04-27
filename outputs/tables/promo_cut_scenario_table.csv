@@ -1,0 +1,5 @@
+scenario,recapture_rate,revenue,gp_contribution,gross_margin,revenue_impact_pct,gp_impact_pct,assumption
+Current mix,,15680869265.429995,1004010930.0921354,0.06402775975599614,0.0,0.0,All promotions continue
+Cut negative promos,0.0,10995039052.899996,1850890392.1879668,0.16833868286259387,-29.882464633898632,84.34962575737252,0% of removed promo revenue returns at organic margin
+Cut + 30% organic recapture,0.3,12400788116.658995,2087532338.0164814,0.16833868286259387,-20.917725243729045,107.91928408836289,30% of removed promo revenue returns at organic margin
+Cut + 50% organic recapture,0.5,13337954159.164995,2245293635.235491,0.16833868286259385,-14.941232316949316,123.63238964235639,50% of removed promo revenue returns at organic margin
