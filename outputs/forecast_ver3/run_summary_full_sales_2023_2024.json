@@ -1,0 +1,16 @@
+{
+  "mode": "train_full_sales_only",
+  "sales_rows": 3833,
+  "future_rows": 548,
+  "train_start": "2012-07-04",
+  "train_end": "2022-12-31",
+  "future_start": "2023-01-01",
+  "future_end": "2024-07-01",
+  "feature_count": 171,
+  "gate_threshold": 0.050833333333333335,
+  "gate_weight": 0.55,
+  "outputs": {
+    "future_predictions": "C:\\Project\\Personal Project\\Datathon 2026\\outputs\\forecast_ver3\\tables\\future_predictions_full_sales_2023_2024.csv",
+    "submission": "C:\\Project\\Personal Project\\Datathon 2026\\outputs\\forecast_ver3\\submission_full_sales_2023_2024.csv"
+  }
+}

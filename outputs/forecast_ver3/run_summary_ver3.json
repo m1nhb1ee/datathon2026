@@ -1,0 +1,36 @@
+{
+  "device": "cuda",
+  "train_rows": 2737,
+  "test_rows": 1096,
+  "future_rows": 548,
+  "feature_count": 171,
+  "upper_tail": {
+    "raw_weighted": 0.7,
+    "q80": 0.3
+  },
+  "gate": {
+    "threshold": 0.050833333333333335,
+    "gate_weight": 0.55,
+    "selected_rate_test": 0.03193430656934307,
+    "selected_rate_future": 0.060218978102189784,
+    "selection": {
+      "gate_threshold": 0.050833333333333335,
+      "gate_weight": 0.55,
+      "val_MAE": 802128.3418767124,
+      "val_RMSE": 1094677.6033942802,
+      "val_R2": 0.5547236379699462,
+      "val_top10_MAE": 1546125.314054054,
+      "val_local_peak_p90_MAE": 1203621.4594117648,
+      "val_fast_growth_top10_MAE": 736120.7500000001,
+      "selected_rate": 0.052054794520547946,
+      "base_val_MAE": 779249.1695068494,
+      "selection_rule": "min local peak MAE with val_MAE <= base * 1.03"
+    }
+  },
+  "outputs": {
+    "metrics": "C:\\Project\\Personal Project\\Datathon 2026\\outputs\\forecast_ver3\\tables\\metrics_ver3.csv",
+    "test_predictions": "C:\\Project\\Personal Project\\Datathon 2026\\outputs\\forecast_ver3\\tables\\test_predictions_ver3.csv",
+    "future_predictions": "C:\\Project\\Personal Project\\Datathon 2026\\outputs\\forecast_ver3\\tables\\future_predictions_ver3.csv",
+    "submission": "C:\\Project\\Personal Project\\Datathon 2026\\outputs\\forecast_ver3\\submission_ver3.csv"
+  }
+}

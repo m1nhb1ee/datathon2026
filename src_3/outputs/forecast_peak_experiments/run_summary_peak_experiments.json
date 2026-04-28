@@ -1,0 +1,13 @@
+{
+  "device": "cuda",
+  "train_rows": 2737,
+  "test_rows": 1096,
+  "feature_count": 171,
+  "direction_3_blend_alpha_log_weight": 1.0,
+  "direction_3_blend_mae_2019": 797221.6396712329,
+  "peak_threshold_train_p90": 8321606.636000001,
+  "outputs": {
+    "metrics": "C:\\Project\\Personal Project\\Datathon 2026\\src_3\\outputs\\forecast_peak_experiments\\tables\\metrics_peak_experiments.csv",
+    "predictions": "C:\\Project\\Personal Project\\Datathon 2026\\src_3\\outputs\\forecast_peak_experiments\\tables\\predictions_peak_experiments.csv"
+  }
+}

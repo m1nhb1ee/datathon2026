@@ -70,9 +70,12 @@ def save_chart(fig, name):
 
 
 def load_inputs():
-    oat_path = SRC / "oat.parquet"
-    if not oat_path.exists():
-        oat_path = ROOT / "oat.parquet"
+    oat_candidates = [
+        ROOT / "src_2" / "oat.parquet",
+        SRC / "oat.parquet",
+        ROOT / "oat.parquet",
+    ]
+    oat_path = next((path for path in oat_candidates if path.exists()), oat_candidates[0])
     oat = pd.read_parquet(oat_path)
     oat["order_date"] = pd.to_datetime(oat["order_date"])
 
@@ -81,6 +84,13 @@ def load_inputs():
     inventory = pd.read_csv(DATA / "inventory.csv", parse_dates=["snapshot_date"])
     reviews = pd.read_csv(DATA / "reviews.csv", parse_dates=["review_date"])
     return oat, sales, promotions, inventory, reviews
+
+
+def promo_id_mask(oat, promo_ids):
+    promo_ids = set(pd.Series(promo_ids).dropna())
+    if not promo_ids:
+        return pd.Series(False, index=oat.index)
+    return oat["promo_id"].isin(promo_ids) | oat["promo_id_2"].isin(promo_ids)
 
 
 def chart1_revenue_anatomy(oat):
@@ -149,6 +159,23 @@ def chart1_revenue_anatomy(oat):
         "margin_first": margin_first,
         "margin_last": margin_last,
     }
+
+
+def order_status_profit_audit(oat):
+    status = oat.groupby("order_status", dropna=False).agg(
+        rows=("order_id", "size"),
+        orders=("order_id", "nunique"),
+        net_revenue=("net_revenue", "sum"),
+        gp_after_refund_shipping=(GP_COL, "sum"),
+        gross_revenue=("gross_revenue_line", "sum"),
+    ).reset_index()
+    status["net_revenue_share"] = status["net_revenue"] / status["net_revenue"].sum()
+    status["gp_share"] = (
+        status["gp_after_refund_shipping"] / status["gp_after_refund_shipping"].sum()
+    )
+    status = status.sort_values("net_revenue", ascending=False)
+    status.to_csv(TABLES / "order_status_profit_audit.csv", index=False)
+    return status
 
 
 def chart2_double_loss(oat):
@@ -239,7 +266,7 @@ def chart3_promo_roi(oat):
     cbar.ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1, decimals=1))
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(money_m))
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(money_m))
-    ax.set_title("Promo ROI Scatter - discount cost vs. post-refund GP contribution",
+    ax.set_title("Promo GP Contribution Map - discount cost vs. post-refund GP contribution",
                  fontsize=15, fontweight="bold", pad=12)
     ax.set_xlabel("Total discount cost (VND)")
     ax.set_ylabel("GP contribution after refunds + shipping (VND)")
@@ -251,6 +278,66 @@ def chart3_promo_roi(oat):
              ha="center", fontsize=9, color="grey")
     save_chart(fig, "chart3_promo_roi_scatter.png")
     return promo
+
+
+def promo_counterfactual_proxy(oat):
+    df = oat.copy()
+    df["quarter"] = df["order_date"].dt.to_period("Q")
+    nonpromo = df[~df["has_promo"]].copy()
+
+    matched_margin = (
+        nonpromo.groupby(["category", "quarter"])
+        .agg(organic_gp=(GP_COL, "sum"), organic_net_revenue=("net_revenue", "sum"))
+        .reset_index()
+    )
+    matched_margin["matched_organic_margin"] = (
+        matched_margin["organic_gp"] / matched_margin["organic_net_revenue"]
+    )
+    category_margin = (
+        nonpromo.groupby("category")
+        .agg(category_gp=(GP_COL, "sum"), category_net_revenue=("net_revenue", "sum"))
+        .reset_index()
+    )
+    category_margin["category_organic_margin"] = (
+        category_margin["category_gp"] / category_margin["category_net_revenue"]
+    )
+    global_margin = nonpromo[GP_COL].sum() / nonpromo["net_revenue"].sum()
+
+    promo = df[df["has_promo"]].merge(
+        matched_margin[["category", "quarter", "matched_organic_margin"]],
+        on=["category", "quarter"], how="left"
+    ).merge(
+        category_margin[["category", "category_organic_margin"]],
+        on="category", how="left"
+    )
+    promo["counterfactual_margin"] = (
+        promo["matched_organic_margin"]
+        .fillna(promo["category_organic_margin"])
+        .fillna(global_margin)
+    )
+    promo["expected_gp_at_matched_organic_margin"] = (
+        promo["net_revenue"] * promo["counterfactual_margin"]
+    )
+    promo["gp_gap_vs_matched_organic_margin"] = (
+        promo[GP_COL] - promo["expected_gp_at_matched_organic_margin"]
+    )
+
+    proxy = promo.groupby("promo_id").agg(
+        promo_name=("promo_name", "first"),
+        actual_gp=(GP_COL, "sum"),
+        expected_gp_at_matched_organic_margin=("expected_gp_at_matched_organic_margin", "sum"),
+        gp_gap_vs_matched_organic_margin=("gp_gap_vs_matched_organic_margin", "sum"),
+        net_revenue=("net_revenue", "sum"),
+        matched_margin_coverage=("matched_organic_margin", lambda s: s.notna().mean()),
+        rows=("order_id", "size"),
+    ).reset_index()
+    proxy["actual_margin"] = proxy["actual_gp"] / proxy["net_revenue"]
+    proxy["expected_margin"] = (
+        proxy["expected_gp_at_matched_organic_margin"] / proxy["net_revenue"]
+    )
+    proxy = proxy.sort_values("gp_gap_vs_matched_organic_margin")
+    proxy.to_csv(TABLES / "promo_counterfactual_proxy_table.csv", index=False)
+    return proxy
 
 
 def chart4_cohort_quality(oat):
@@ -436,7 +523,7 @@ def chart5_scenario_simulation(oat):
         net_revenue=("net_revenue", "sum"),
     ).reset_index()
     cut_ids = promo.loc[promo["gp_contribution"] < 0, "promo_id"]
-    cut_mask = oat["promo_id"].isin(cut_ids)
+    cut_mask = promo_id_mask(oat, cut_ids)
 
     total_revenue = oat["net_revenue"].sum()
     total_gp = oat[GP_COL].sum()
@@ -743,7 +830,7 @@ def chart7_triage(oat, overlap_events):
     total_revenue = oat["net_revenue"].sum()
     total_profit = oat[GP_COL].sum()
     cut_ids = promo.loc[promo["verdict"] == "CUT", "promo_id"]
-    cut_mask = oat["promo_id"].isin(cut_ids)
+    cut_mask = promo_id_mask(oat, cut_ids)
     rev_impact_pct = oat.loc[cut_mask, "net_revenue"].sum() / total_revenue * 100
     profit_impact_pct = -oat.loc[cut_mask, GP_COL].sum() / total_profit * 100
 
@@ -807,6 +894,7 @@ def write_summary(metrics):
 
 ## Act 2 - Promo Economics and Cohort Quality
 - Net-negative promotions: {(metrics['promo']['total_net_contribution'] < 0).mean() * 100:.1f}%.
+- Matched organic-margin proxy: promo rows underperform matched non-promo category-quarter margin by {metrics['counterfactual']['gp_gap_vs_matched_organic_margin'].sum():,.0f} VND. This is a margin benchmark, not a causal uplift estimate.
 - Item return rate is not meaningfully higher for promo-acquired customers: {metrics['cohort']['rr_promo']:.1%} vs {metrics['cohort']['rr_org']:.1%}, Mann-Whitney one-sided p={metrics['cohort']['p_greater']:.4f}.
 - Customer repeat rate is lower for promo-acquired customers: {metrics['cohort']['rep_promo']:.1%} vs {metrics['cohort']['rep_org']:.1%}.
 - Average lifetime gross profit per customer is {metrics['cohort']['gp_promo']:,.0f} VND for promo vs {metrics['cohort']['gp_org']:,.0f} VND for organic, a {metrics['cohort']['gp_gap']:.0%} gap.
@@ -833,6 +921,10 @@ def write_summary(metrics):
 - CUT: {metrics['triage']['cut_count']} promotions, total GP contribution {metrics['triage']['cut_net']:,.0f} VND.
 - RESCHEDULE: {metrics['triage']['reschedule_count']} promotions.
 - Cutting negative-GP promotions implies revenue -{metrics['triage']['rev_impact_pct']:.1f}% and GP contribution +{metrics['triage']['profit_impact_pct']:.1f}% under zero demand recapture.
+
+## Method Notes
+- Contribution metrics use all order statuses; see `order_status_profit_audit.csv` for sensitivity and status mix transparency.
+- `Promo GP Contribution Map` is contribution accounting, not true ROI. True incremental ROI would require a counterfactual demand model or experiment.
 """
     path = OUT / "part2_corrected_results.md"
     path.write_text(summary, encoding="utf-8")
@@ -843,8 +935,10 @@ def main():
     oat, sales, promotions, inventory, reviews = load_inputs()
     metrics = {}
     metrics["act1"] = chart1_revenue_anatomy(oat)
+    metrics["status"] = order_status_profit_audit(oat)
     metrics["category"] = chart2_double_loss(oat)
     metrics["promo"] = chart3_promo_roi(oat)
+    metrics["counterfactual"] = promo_counterfactual_proxy(oat)
     metrics["cohort"] = chart4_cohort_quality(oat)
     metrics["margin"] = chart5_margin_trajectory(oat, sales)
     metrics["scenario"] = chart5_scenario_simulation(oat)
