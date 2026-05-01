@@ -824,13 +824,15 @@ def run_pipeline(
 
     import matplotlib.pyplot as plt
 
+    X_val_desc = X_val_df.rename(columns=lambda c: FEATURE_DESCRIPTIONS.get(c, c))
+
     # Bar plot - mean |SHAP|
-    shap.summary_plot(shap_values_log, X_val_df, plot_type="bar", max_display=20)
+    shap.summary_plot(shap_values_log, X_val_desc, plot_type="bar", max_display=20)
     plt.tight_layout()
     plt.savefig("shap_bar.png", dpi=150)
 
     # Beeswarm - phân phối từng feature
-    shap.summary_plot(shap_values_log, X_val_df, max_display=20)
+    shap.summary_plot(shap_values_log, X_val_desc, max_display=20)
     plt.tight_layout()
     plt.savefig("shap_beeswarm.png", dpi=150)
 
